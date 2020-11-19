@@ -1,0 +1,108 @@
+version: '3.7'
+services:
+  config-serve-contenedor:
+    image: config-server:v1
+    ports:
+      - '8888:8888'
+    restart: always
+    networks:
+      - redspringcloud2020
+  cont-servicio-eureka-server:
+    image: servicio-eureka-server:v1
+    ports:
+      - '8761:8761'
+    restart: always
+    networks:
+      - redspringcloud2020
+  cont-servicio-mysql8:
+    image: mysql:8
+    ports:
+      - '3306:3306'
+    restart: always
+    networks:
+      - redspringcloud2020
+    command: ['mysqld', '--default-authentication-plugin=mysql_native_password']
+    environment:
+      MYSQL_DATABASE: spring_cloud2020
+      MYSQL_ROOT_PASSWORD: znfmdyRootMysql
+  cont-servicio-productos:
+    image: servicio-productos:v1
+    restart: always
+    networks:
+      - redspringcloud2020
+    depends_on:
+      - config-serve-contenedor
+      - cont-servicio-eureka-server
+      - cont-servicio-mysql8
+  servicio-item:
+    image: servicio-item:v1
+    ports:
+      - '8002:8002'
+      - '8005:8005'
+      - '8007:8007'
+    restart: always
+    networks:
+      - redspringcloud2020
+    depends_on:
+      - config-serve-contenedor
+      - cont-servicio-eureka-server
+      - cont-servicio-productos
+  servicio-usuarios:
+    image: servicio-usuarios:v1
+    restart: always
+    networks:
+      - redspringcloud2020
+    depends_on:
+      - config-serve-contenedor
+      - cont-servicio-eureka-server
+  servicio-oauth:
+    image: servicio-oauth:v1
+    ports:
+      - '9100'
+    restart: always
+    networks:
+      - redspringcloud2020
+    depends_on:
+      - config-serve-contenedor
+      - cont-servicio-eureka-server
+      - servicio-usuarios
+  cont-zuul-server:
+    image: servicio-zuul-server:v1
+    ports:
+      - '8090:8090'
+    restart: always
+    networks:
+      - redspringcloud2020
+    depends_on:
+      - config-serve-contenedor
+      - cont-servicio-eureka-server
+      - cont-servicio-productos
+      - servicio-item
+      - servicio-usuarios
+      - servicio-oauth
+  microservicios-rabbitmq38:
+    image: rabbitmq:3.8-management-alpine
+    ports:
+      - '15672:15672'
+      - '5672:5672'
+    restart: always
+    networks:
+      - redspringcloud2020
+  zipkin-server:
+    image: zipkin-server:v1
+    ports:
+      - '9411:9411'
+    restart: always
+    networks:
+      - redspringcloud2020
+    depends_on:
+      - microservicios-rabbitmq38
+      - cont-servicio-mysql8
+    environment:
+      RABBIT_ADDRESSES: microservicios-rabbitmq38:5672
+      STORAGE_TYPE: mysql
+      MYSQL_USER: zipkin
+      MYSQL_PASS: zipkinSinRoche123
+      MYSQL_HOST: cont-servicio-mysql8
+networks:
+  redspringcloud2020:
